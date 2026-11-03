@@ -3,6 +3,7 @@ import pytesseract
 import matplotlib.pyplot as plt
 from pytesseract import Output
 from pathlib import Path
+import easyocr
 
 class ImageLocation:
     
@@ -23,15 +24,12 @@ class ImageReader:
         blurred = cv2.GaussianBlur(img, (0, 0), 3)
         sharpened = cv2.addWeighted(img, 1.5, blurred, -0.5, 0)
 
-        gray = cv2.cvtColor(sharpened, cv2.COLOR_BGR2GRAY)
-        thresh = cv2.threshold(
-            gray, 115, 255, cv2.THRESH_BINARY_INV
-        )[1]
+        thresh = cv2.threshold(sharpened, 115, 255, cv2.THRESH_BINARY_INV)[1]
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
+        dilate = cv2.dilate(thresh, kernel, iterations=2)
+        final = cv2.threshold(dilate, 115, 255, cv2.THRESH_BINARY_INV)[1]
 
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-        dilate = cv2.dilate(thresh, kernel, iterations=1)
-
-        return dilate
+        return final
 
         
 
@@ -42,6 +40,15 @@ class ImageReader:
             raise OSError(f"Unable to load image{image_path}")
 
         return image
+
+    def read_image_easyocr(self, image_path):
+
+        image_ocr = reader.readtext(str(image_path), allowlist='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+
+        if image_ocr is None:
+            raise OSError(f"Unable to load image{image_path}")
+
+        return image_ocr
 
     def custom_config(self) -> str:
         config = (
@@ -59,10 +66,13 @@ class ImageReader:
 if __name__ == '__main__':
     location = ImageLocation()
     reader = ImageReader()
+    easy_reader = easyocr.Reader(["en"])
 
     for image_path in location.list_images():
         image = reader.read_image(image_path)
         enhanced_image = reader.enhance_image(image)
+        image_ocr = easy_reader.readtext(enhanced_image)
+        image_ocr_enhanced = easy_reader.readtext(enhanced_image)
         title = f"# Read Image: {image_path.name} #"
         
         print("#" * len(title))
@@ -70,7 +80,28 @@ if __name__ == '__main__':
         print("#" * len(title))
 
         print("\n")
+        print("Tesserect: ")
         print(reader.extract_text(enhanced_image))
-        cv2.imshow("Teste", enhanced_image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        print("\n")
+
+        print("EasyOCR: ")
+
+        if not image_ocr:
+            print("EasyOCR não encontrou texto nesta imagem.")
+            continue
+
+        for box, text, confidence in image_ocr:
+            print(f"Texto: {text} | Confiança: {confidence:.2f}")
+        
+        print("\n")
+
+        print("EasyOCR Enhanced: ")
+        
+        if not image_ocr_enhanced:
+            print("EasyOCR não encontrou texto nesta imagem.")
+            continue
+
+        for box, text, confidence in image_ocr_enhanced:
+            print(f"Texto: {text} | Confiança: {confidence:.2f}")
+        
+        print("\n")
