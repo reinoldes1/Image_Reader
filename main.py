@@ -1,7 +1,4 @@
 import cv2
-import pytesseract
-import matplotlib.pyplot as plt
-from pytesseract import Output
 from pathlib import Path
 import easyocr
 
@@ -50,19 +47,6 @@ class ImageReader:
 
         return image_ocr
 
-    def custom_config(self) -> str:
-        config = (
-            "--psm 7 --oem 3 "
-            "-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 "
-            "-c load_system_dawg=0 -c load_freq_dawg=0"
-        )
-        
-        return config
-
-    def extract_text(self, image_rgb):
-        extracted_text = pytesseract.image_to_string(image_rgb, lang="por", config=self.custom_config())
-        return extracted_text
-
 if __name__ == '__main__':
     location = ImageLocation()
     reader = ImageReader()
@@ -73,16 +57,12 @@ if __name__ == '__main__':
         enhanced_image = reader.enhance_image(image)
         image_ocr = easy_reader.readtext(enhanced_image)
         image_ocr_enhanced = easy_reader.readtext(enhanced_image)
+        
         title = f"# Read Image: {image_path.name} #"
         
         print("#" * len(title))
         print(title)
         print("#" * len(title))
-
-        print("\n")
-        print("Tesserect: ")
-        print(reader.extract_text(enhanced_image))
-        print("\n")
 
         print("EasyOCR: ")
 
